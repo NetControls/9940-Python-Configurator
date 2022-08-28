@@ -2,10 +2,23 @@
 import serial
 import time
 import subprocess
+import keyboard
+import serial.tools.list_ports
+
+#Select the serial port
+portList = serial.tools.list_ports.comports()
 
 
-#OPen the Serial Port
-ser = serial.Serial(port='COM12', baudrate=38400, timeout=.1)
+print("Select the Serial Port")
+for i in range(len(portList)):
+    portNum = i+1
+    print('Press ' + str(portNum) + ' to select ' + portList[i].name)
+portSelected = keyboard.read_key()
+port = portList[(int(portSelected) - 1)]
+
+
+#Open the Serial Port
+ser = serial.Serial(port=port.name, baudrate=38400, timeout=.1)
 
 def printParams(axis_no):
     #Motor Accel
@@ -271,35 +284,92 @@ def loadCode(axis_no):
         print(result.stdout)
         print(result.stderr)        
         #exit()        
+
+#Exit the program    
+def exit_case():
+    #Close the serial port
+    ser.close()
+    exit()
+
+#Upload firmware
+def upload_firmware():
+    print("Type in Axis Number to Load FW: \r")
+    fw_axis = keyboard.read_key()
+    loadCode(fw_axis)
+
+#Perform motor test
+def motor_test(axis_no):
+    print("Motor test beginning...")
+    #Initialize
+    ser.write(axis_no.encode())
+    ser.write(b"i1\r")
+    #Rotate one turn
+    ser.write(axis_no.encode())
+    ser.write(b"p51200\r")
+    time.sleep(10)
+    #Read encoder
+    ser.write(axis_no.encode())
+    ser.write(b"y\r")
+    time.sleep(.1)
+    value = ser.readline()
+    print(value.decode("Ascii"))
+    #Rotate back
+    ser.write(axis_no.encode())
+    ser.write(b"p0\r")
+    time.sleep(10)
+    #Read result
+    ser.write(axis_no.encode())
+    ser.write(b"y\r")
+    time.sleep(.1)
+    value = ser.readline()
+    print(value.decode("Ascii"))
     
-while True:    
+#Set axis number
+def set_axis():
+    global axis_no
+    axis_no = []
+
+def configure_compatibility(axis_no):
+    ser.write(axis_no.encode())
+    ser.write(b"F1\r")
+    time.sleep(.1)
+    ser.write(axis_no.encode())
+    ser.write(b"G1\r")
+
+keyboard.add_hotkey('r', lambda: printParams(axis_no))
+keyboard.add_hotkey('e', exit_case)
+keyboard.add_hotkey('l', lambda: loadDefaults(axis_no))
+keyboard.add_hotkey('s', lambda: saveDefaults(axis_no))
+keyboard.add_hotkey('a', lambda: changeAddr(axis_no))
+keyboard.add_hotkey('u', upload_firmware)
+keyboard.add_hotkey('t', lambda: motor_test(axis_no))
+keyboard.add_hotkey('x', lambda: set_axis())
+keyboard.add_hotkey('c', lambda: configure_compatibility(axis_no))
+
+axis_no = [":","1"]
+
+
+while True:
     print("Use the following Commands to read/write NVM Parameters:\r")
-    print("Type read to Read flash contents:\r")
-    print("Type done to exit:\r")
-    print("Type defaults to load defaults:\r")
-    print("Type save to Save defaults:\r")
-    print("Type add to change address of axis:\r")
-    print("Type fw to upload new firmware:\r")
+    print("Press r to read flash contents:\r")
+    print("Press e to exit:\r")
+    print("Press l to load defaults:\r")
+    print("Press s to save defaults:\r")
+    print("Press a to change address of axis:\r")
+    print("Press u to upload new firmware:\r")
+    print("Press t to perform motor test:\r")
+    print("Press x to set axis:\r")
+    print("Press c to configure compatibility mode:\r")
     #Get the axis number first
-    usrInput = input("Type AXIS number to begin:\r")
-    #print(list(usrInput))
-    axis_no = ":" + usrInput
-    print(list(axis_no))
+    if not axis_no:
+        print("Type AXIS number to begin:\r")
+        usrInput = keyboard.read_key()
+        if not usrInput.isdigit():
+            continue;
+        axis_no = ":" + usrInput
+        print("AXIS number set to " + axis_no[1] + "\r")
     print("Type Command: \r")
-    usrInput = input()
-    if(usrInput == "read"):
-        printParams(axis_no)
-    elif(usrInput == "defaults"):
-        loadDefaults(axis_no)
-    elif(usrInput == "save"):
-        saveDefaults(axis_no)
-    elif(usrInput == "add"):
-        changeAddr(axis_no)
-    elif(usrInput == "fw"):
-        axis_no = input("Type in Axis Number to Load FW: \r")        
-        loadCode(axis_no)
-    elif(usrInput == "done"):
-        #Close the Serial port
-        ser.close()
-        exit()
+    keyboard.read_key()
+    time.sleep(.1)
+    
         
