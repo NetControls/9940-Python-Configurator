@@ -1,9 +1,11 @@
 # 9940-Python-Configurator
 Configurator for 9904/9940 Motion Controllers
 
-Python Version: 3.10.2
+Python Version: 3.10.5
 
 PySerial Version: 3.5
+
+Keyboard Version: 0.13.5
 
 ToDo:
 
